@@ -1469,7 +1469,7 @@ app.get('/job/:slug', (req, res) => {
     "description": job.description_html,
     "identifier": {
       "@type": "PropertyValue",
-      "name": job.source || "LKW Fahrer Jobs",
+      "name": SITE_NAME,
       "value": job.guid
     },
     "datePosted": datePostedISO,
@@ -1753,4 +1753,5 @@ app.listen(PORT, () => {
   console.log(`Jobs gesamt:  ${getCachedCount().toLocaleString('de-DE')}`);
   console.log('='.repeat(60) + '\n');
 });
+
 
