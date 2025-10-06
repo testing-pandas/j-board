@@ -26,6 +26,8 @@ const HAS_OPENAI = !!process.env.OPENAI_API_KEY;
 const CLICK_SECRET = process.env.CLICK_SECRET || crypto.randomBytes(16).toString('hex');
 const TARGET_PROFESSION = process.env.TARGET_PROFESSION || 'lkw-fahrer';
 const AI_PROCESS_LIMIT = Number(process.env.AI_PROCESS_LIMIT || 0); // 0 = unbegrenzt
+const TARGET_COUNTRY = process.env.TARGET_COUNTRY || 'DE';
+const TARGET_COUNTRY_NAME = process.env.TARGET_COUNTRY_NAME || 'Deutschland';
 
 // Such-Keywords (kleinbuchstaben)
 const PROFESSION_KEYWORDS = (process.env.PROFESSION_KEYWORDS || 'lkw-fahrer,lkw fahrer,berufskraftfahrer,fernfahrer,lastwagenfahrer,sattelzugfahrer,ce-fahrer')
@@ -1400,11 +1402,76 @@ app.get('/job/:slug', (req, res) => {
   const datePostedISO = new Date(job.published_at * 1000).toISOString();
   const validThrough = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
 
+  // Extract location from description if possible
+  const extractLocation = (html = '', title = '') => {
+    const text = (convert(html, { wordwrap: 1000 }) + ' ' + title).toLowerCase();
+    
+    // Try to find German cities or regions
+    const germanCities = [
+      'berlin', 'hamburg', 'münchen', 'köln', 'frankfurt', 'stuttgart', 'düsseldorf',
+      'dortmund', 'essen', 'leipzig', 'bremen', 'dresden', 'hannover', 'nürnberg',
+      'duisburg', 'bochum', 'wuppertal', 'bielefeld', 'bonn', 'münster', 'karlsruhe',
+      'mannheim', 'augsburg', 'wiesbaden', 'gelsenkirchen', 'mönchengladbach',
+      'braunschweig', 'chemnitz', 'kiel', 'aachen', 'halle', 'magdeburg', 'freiburg',
+      'krefeld', 'lübeck', 'oberhausen', 'erfurt', 'mainz', 'rostock', 'kassel'
+    ];
+    
+    for (const city of germanCities) {
+      if (text.includes(city)) {
+        return {
+          city: city.charAt(0).toUpperCase() + city.slice(1),
+          country: TARGET_COUNTRY_NAME
+        };
+      }
+    }
+    
+    // Default to configured country
+    return {
+      country: TARGET_COUNTRY_NAME
+    };
+  };
+
+  // Extract experience requirements from description
+  const extractExperience = (html = '', title = '') => {
+    const text = (convert(html, { wordwrap: 1000 }) + ' ' + title).toLowerCase();
+    
+    // Look for years of experience
+    const yearsMatch = text.match(/(\d+)\s*(?:\+|\-|\s)*(?:jahre?|years?)\s+(?:erfahrung|experience|berufserfahrung)/i);
+    if (yearsMatch) {
+      return `${yearsMatch[1]} Jahre Berufserfahrung`;
+    }
+    
+    // Look for specific requirements
+    if (/\b(führerschein ce|klasse ce|class 1|cdl)\b/i.test(text)) {
+      return 'Führerschein Klasse CE erforderlich';
+    }
+    
+    return null;
+  };
+
+  const location = extractLocation(job.description_html, job.title);
+  const experienceReq = extractExperience(job.description_html, job.title);
+
+  // Build jobLocation object
+  const jobLocation = {
+    "@type": "Place",
+    "address": {
+      "@type": "PostalAddress",
+      ...(location.city ? { "addressLocality": location.city } : {}),
+      "addressCountry": location.country || "DE"
+    }
+  };
+
   const jobPostingJson = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     "title": job.title,
     "description": job.description_html,
+    "identifier": {
+      "@type": "PropertyValue",
+      "name": job.source || "LKW Fahrer Jobs",
+      "value": job.guid
+    },
     "datePosted": datePostedISO,
     "validThrough": validThrough,
     "employmentType": meta.employmentType,
@@ -1412,7 +1479,18 @@ app.get('/job/:slug', (req, res) => {
       "@type": "Organization",
       "name": job.company || "Unbekannt"
     },
-    ...(meta.isRemote ? { "jobLocationType": "TELECOMMUTE" } : {}),
+    "jobLocation": jobLocation,
+    "directApply": true,
+    ...(meta.isRemote ? { 
+      "jobLocationType": "TELECOMMUTE"
+    } : {}),
+    ...(experienceReq ? {
+      "experienceRequirements": {
+        "@type": "OccupationalExperienceRequirements",
+        "monthsOfExperience": 0
+      },
+      "description": job.description_html + `\n<p><strong>Anforderungen:</strong> ${experienceReq}</p>`
+    } : {}),
     ...(meta.salary ? {
       "baseSalary": {
         "@type": "MonetaryAmount",
@@ -1421,7 +1499,7 @@ app.get('/job/:slug', (req, res) => {
           "@type": "QuantitativeValue",
           ...(meta.salary.min ? { "minValue": meta.salary.min } : {}),
           ...(meta.salary.max ? { "maxValue": meta.salary.max } : {}),
-          ...(meta.salary.unit ? { "unitText": meta.salary.unit } : {})
+          "unitText": meta.salary.unit || "YEAR"
         }
       }
     } : {})
@@ -1675,3 +1753,4 @@ app.listen(PORT, () => {
   console.log(`Jobs gesamt:  ${getCachedCount().toLocaleString('de-DE')}`);
   console.log('='.repeat(60) + '\n');
 });
+
