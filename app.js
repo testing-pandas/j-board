@@ -535,6 +535,7 @@ export async function processFeed() {
     let skipped = 0;
     let aiEnhanced = 0;
     let fallbackUsed = 0;
+    let parseErrors = 0;
 
     const batchSize = 100;
     const insertBatch = db.transaction((jobs) => {
@@ -552,7 +553,15 @@ export async function processFeed() {
     let currentTag = '';
     let currentText = '';
 
-    const parser = sax.createStream(true, { trim: true, normalize: true });
+    // Create parser with LESS strict mode to handle malformed XML
+    const parser = sax.createStream(false, { 
+      trim: true, 
+      normalize: true,
+      lowercase: true,
+      xmlns: false,
+      position: false,
+      strictEntities: false
+    });
 
     parser.on('opentag', (node) => {
       currentTag = node.name.toLowerCase();
@@ -569,8 +578,13 @@ export async function processFeed() {
       }
     });
 
-    parser.on('text', (text) => { currentText += text; });
-    parser.on('cdata', (text) => { currentText += text; });
+    parser.on('text', (text) => { 
+      if (text) currentText += text; 
+    });
+    
+    parser.on('cdata', (text) => { 
+      if (text) currentText += text; 
+    });
 
     parser.on('closetag', (tagName) => {
       tagName = tagName.toLowerCase();
@@ -626,13 +640,34 @@ export async function processFeed() {
       }
     });
 
+    // Better error handling - log but continue parsing
     parser.on('error', (err) => {
-      console.error('SAX Parser Fehler:', err.message);
+      parseErrors++;
+      if (parseErrors <= 10) {
+        console.warn(`XML Parse Warning #${parseErrors}: ${err.message}`);
+      } else if (parseErrors === 11) {
+        console.warn('(weitere XML-Warnungen werden unterdrückt)');
+      }
+      // Resume parsing despite errors
+      parser.resume();
     });
 
     await new Promise((resolve, reject) => {
+      let streamError = null;
+      
+      stream.on('error', (err) => {
+        console.error('Stream Error:', err.message);
+        streamError = err;
+      });
+
       stream.pipe(parser);
+      
       parser.on('end', async () => {
+        if (streamError) {
+          reject(streamError);
+          return;
+        }
+
         if (batch.length > 0) {
           console.log(`\nVerarbeite ${batch.length} gematchte Jobs…`);
           const processedBatch = [];
@@ -682,9 +717,6 @@ export async function processFeed() {
 
         resolve();
       });
-
-      parser.on('error', reject);
-      stream.on('error', reject);
     });
 
     console.log(`\nFeed fertig!`);
@@ -692,7 +724,11 @@ export async function processFeed() {
     console.log(`Gematcht (Profession): ${matched.toLocaleString()}`);
     console.log(`KI-veredelt: ${aiEnhanced.toLocaleString()}`);
     console.log(`Schneller Fallback: ${fallbackUsed.toLocaleString()}`);
-    console.log(`Übersprungen: ${skipped.toLocaleString()} (Duplikate/kein Match)\n`);
+    console.log(`Übersprungen: ${skipped.toLocaleString()} (Duplikate/kein Match)`);
+    if (parseErrors > 0) {
+      console.log(`XML-Warnungen: ${parseErrors.toLocaleString()} (wurden ignoriert)`);
+    }
+    console.log('');
 
     const total = getCachedCount(0);
     if (total > MAX_JOBS) {
@@ -1778,6 +1814,7 @@ app.listen(PORT, () => {
   console.log(`Jobs gesamt:  ${getCachedCount().toLocaleString('de-DE')}`);
   console.log('='.repeat(60) + '\n');
 });
+
 
 
 
