@@ -347,22 +347,35 @@ async function rewriteJobRich({ title, company, html }, useAI = false) {
   const plain = convert(html || '', {
     wordwrap: 120,
     selectors: [{ selector: 'a', options: { ignoreHref: true } }]
-  }).slice(0, 9000);
+  }).slice(0, 12000); // Increased context window
 
+  // Improved fallback: uses actual content, organizes it cleanly
   const fallback = () => {
-    const paragraphs = plain.split(/\n+/).filter(Boolean).slice(0, 6).map(p => `<p>${escapeHtml(p)}</p>`).join('\n');
-    const fallbackHTML = `
-<section><h2>Über die Stelle</h2>${paragraphs || '<p>Details vom Arbeitgeber bereitgestellt.</p>'}</section>
-<section><h2>Aufgaben</h2><ul><li>Kernaufgaben wie beschrieben durchführen.</li></ul></section>
-<section><h2>Anforderungen</h2><ul><li>Relevante Erfahrung oder Lernbereitschaft.</li></ul></section>
-<section><h2>Vorteile</h2><ul><li>Leistungen gemäß Stellenbeschreibung.</li></ul></section>
-<section><h2>Vergütung</h2><p>Wird im Gespräch besprochen.</p></section>
-<section><h2>Standort & Arbeitszeit</h2><p>Details gemäß Stellenbeschreibung.</p></section>
-<section><h2>Wie bewerben</h2><p>Nutzen Sie die Schaltfläche „Jetzt bewerben“.</p></section>`.trim();
+    const paragraphs = plain.split(/\n+/).filter(Boolean);
+    let structuredHTML = '';
+    
+    // If we have substantial content, organize it
+    if (paragraphs.length > 3 && plain.length > 200) {
+      const intro = paragraphs.slice(0, 2).map(p => `<p>${escapeHtml(p)}</p>`).join('\n');
+      const rest = paragraphs.slice(2).map(p => `<p>${escapeHtml(p)}</p>`).join('\n');
+      
+      structuredHTML = `
+<section>
+  <h2>Stellenbeschreibung</h2>
+  ${intro}
+</section>
+<section>
+  <h2>Details</h2>
+  ${rest}
+</section>`.trim();
+    } else {
+      // Minimal content - just present it cleanly
+      structuredHTML = `<section><h2>Stellenbeschreibung</h2>${paragraphs.map(p => `<p>${escapeHtml(p)}</p>`).join('\n') || '<p>Bitte bewerben Sie sich für weitere Details.</p>'}</section>`;
+    }
 
     return {
-      short: truncateWords(plain, 45),
-      html: sanitizeHtml(fallbackHTML),
+      short: truncateWords(plain, 60),
+      html: sanitizeHtml(structuredHTML),
       tags: extractTags({ title, company, html }),
       usedAI: false
     };
@@ -372,56 +385,62 @@ async function rewriteJobRich({ title, company, html }, useAI = false) {
     return fallback();
   }
 
-  const system = `
-You are a senior job-content editor for ${TARGET_PROFESSION} roles. Write naturally in ${TARGET_LANG}.
+  const system = `You are an expert HR content writer. Rewrite the provided job description into clear, structured HTML that is directly usable on a job board.
 
-OUTPUT CONTRACT — return EXACTLY these three blocks in this order:
+CRITICAL RULES:
+- Only use information present in the input (title, company, description text)
+- Do NOT invent missing fields, benefits, or requirements
+- If information is unknown or not mentioned, DO NOT include that section
+- Be thorough but factual - extract and organize what's actually there
+- Keep employer/compensation phrasing neutral and accurate
+- No marketing fluff or generic placeholder content
+- Write in natural, professional ${TARGET_LANG}
+
+OUTPUT FORMAT — return exactly these three blocks:
 ===DESCRIPTION===
-[35–60 words of plain text. No HTML, quotes, emojis.]
+[A 100-200 word summary of the role in plain text. Extract key points from the actual job description. No HTML.]
+
 ===HTML===
-[Only clean HTML fragments; NEVER include <!DOCTYPE>, <html>, <head>, or <body>.]
+[Clean, semantic HTML fragments only. Include ONLY sections where you have real information:]
+
+Available sections (use only if content supports them):
+- <section><h2>Über die Stelle</h2>... (overview/introduction)
+- <section><h2>Aufgaben</h2><ul><li>... (specific responsibilities mentioned)
+- <section><h2>Anforderungen</h2><ul><li>... (actual requirements stated)
+- <section><h2>Wir bieten</h2><ul><li>... (specific benefits mentioned)
+- <section><h2>Qualifikationen</h2><ul><li>... (qualifications/certifications)
+- <section><h2>Vergütung & Konditionen</h2>... (only if salary/terms mentioned)
+- <section><h2>Standort & Arbeitszeit</h2>... (only if location/schedule specified)
+
+HTML GUIDELINES:
+- Use semantic markup: <section>, <h2>, <p>, <ul>, <li>, <strong>
+- Lists should be specific and detailed (not generic bullets)
+- Include 2-6 sections based on available content
+- Aim for 300-600 words total when source content supports it
+- No <!DOCTYPE>, <html>, <head>, or <body> tags
+- No inline styles, scripts, or external links
+
 ===TAGS===
-[Valid JSON array (3–8 items), all lowercase, in ${TARGET_LANG}, relevant to ${TARGET_PROFESSION}.]
+[Valid JSON array with 4-10 items, lowercase, in ${TARGET_LANG}, based on actual content - e.g., skills, certifications, job types mentioned]
 
-HTML SECTIONS (localize headers into ${TARGET_LANG}; keep this order):
-1) About the Role
-2) Responsibilities
-3) Requirements
-4) Benefits
-5) Compensation
-6) Location & Schedule
-7) How to Apply
+EXAMPLES OF WHAT NOT TO DO:
+❌ "Kernaufgaben wie beschrieben durchführen" (generic)
+❌ "Relevante Erfahrung oder Lernbereitschaft" (vague)
+❌ "Details werden im Gespräch besprochen" (filler)
+❌ Including sections when no relevant info exists
 
-HTML RULES:
-- Use semantic, minimal, valid markup: <section>, <h2>, <p>, <ul>, <li>, <strong>, <em>, <time>, <address>.
-- Wrap each logical block in <section> with the localized <h2> headers above (order fixed).
-- Lists must be scannable: 5–8 bullets per list, 4–12 words per bullet.
-- No inline styles, no scripts, no images, no tables.
-- No external links unless an explicit application link is present in the user message; otherwise omit links entirely.
-- Use metric units and locale-appropriate number/date formats for ${TARGET_LANG}.
+EXAMPLES OF GOOD CONTENT:
+✓ Extract specific responsibilities: "Fahrten im Fernverkehr durch Deutschland und EU-Länder"
+✓ List actual requirements: "Führerschein Klasse CE, gültige Fahrerkarte, Berufskraftfahrerqualifikation"
+✓ State specific benefits if mentioned: "Modernste Fahrzeugflotte (2021-2023), Firmenpension"
+✓ Only include compensation if stated: "3.200-3.800 EUR brutto/Monat"`;
 
-CONTENT GUIDELINES:
-- DESCRIPTION: 35–60 words, active voice, concrete value proposition, zero fluff.
-- Responsibilities & Requirements: prioritize concrete outcomes, tools, and must-haves; avoid clichés.
-- Benefits: list only realistic, generally applicable perks.
-- Compensation: show a clear range when present; else “To be discussed”.
-- Location & Schedule: reflect known facts; else generic.
-- How to Apply: single plain sentence without a link unless one is explicitly provided.
-
-STRICT VALIDATION BEFORE RETURN:
-- DESCRIPTION length is 35–60 words and contains no HTML.
-- HTML contains exactly seven <section> blocks with localized <h2> headers in the exact order listed; no empty sections.
-- No full HTML documents; only fragments.
-- TAGS is valid JSON, 3–8 lowercase items in ${TARGET_LANG}, all relevant to ${TARGET_PROFESSION}.
-- Do not hallucinate employer-specific facts or links not provided by the user.
-`;
-
-  const user = `Job: ${title || 'N/A'}\nCompany: ${company || 'N/A'}\nText:\n${plain}`;
+  const user = `Job Title: ${title || 'N/A'}\nCompany: ${company || 'N/A'}\n\nJob Description:\n${plain}`;
 
   try {
     const resp = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.2,
+      temperature: 0.4, // Increased for more natural variation
       messages: [
         { role: "system", content: system },
         { role: "user", content: user }
@@ -435,16 +454,22 @@ STRICT VALIDATION BEFORE RETURN:
     const tagsMatch = out.match(/===TAGS===\s*([\s\S]*)$/i);
 
     let short = (descMatch?.[1] || '').trim();
-    if (!short) short = convert(out, { wordwrap: 120 }).slice(0, 300);
-    short = convert(short, { wordwrap: 120 }).trim().slice(0, 600);
+    if (!short) {
+      // If AI didn't produce description, use original content
+      short = truncateWords(plain, 60);
+    }
+    short = convert(short, { wordwrap: 120 }).trim();
+    
+    // Enforce reasonable length but allow more detail
+    if (short.length > 800) short = short.slice(0, 800) + '…';
 
     let htmlOut = (htmlMatch?.[1] || '').trim();
-    if (!htmlOut) {
-      htmlOut = `<section><h2>Über die Stelle</h2><p>${escapeHtml(short)}</p></section>`;
-    }
     htmlOut = stripDocumentTags(htmlOut);
-    if (htmlOut.length < 50) {
-      htmlOut = `<section><h2>Über die Stelle</h2><p>${escapeHtml(short)}</p></section>`;
+    
+    // Validate we have substantial content
+    if (htmlOut.length < 100) {
+      console.log('AI output too short, using fallback for:', title);
+      return fallback();
     }
 
     let tagsParsed = null;
@@ -1753,5 +1778,6 @@ app.listen(PORT, () => {
   console.log(`Jobs gesamt:  ${getCachedCount().toLocaleString('de-DE')}`);
   console.log('='.repeat(60) + '\n');
 });
+
 
 
