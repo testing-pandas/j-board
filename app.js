@@ -13,7 +13,7 @@ import fetch from 'node-fetch';
 // UMGEBUNGSVARIABLEN
 // ========================================
 const PORT = Number(process.env.PORT || 3000);
-const SITE_URL = (process.env.SITE_URL || `http://localhost:${PORT}`).replace(/\/+$/,'');
+const SITE_URL = (process.env.SITE_URL || `http://localhost:${PORT}`).replace(/\/+$/, '');
 const SITE_NAME = process.env.SITE_NAME || 'LKW Fahrer Jobs Deutschland';
 const FAVICON_URL = process.env.FAVICON_URL || '';
 const SITE_LOGO = process.env.SITE_LOGO || '';
@@ -265,23 +265,23 @@ function matchesProfession(title = '', company = '', description = '') {
 // Tag-Extraktion
 const PROFESSION_TAGS = {
   'lkw-fahrer': [
-    'führerschein ce','führerschein c','führerschein c1','führerschein c1e','klasse ce','klasse c',
-    'berufskraftfahrerqualifikation','bkf','beschleunigte grundqualifikation','adr-schein','adr',
-    'gefahrgut','gabelstaplerschein','ladungssicherung','digitaler tachograph',
-    'sattelzug','sattelschlepper','solo','gliederzug','kipper','pritsche','plane',
-    'kühlfahrzeug','tiefkühler','tankwagen','silo','wechselbrücke','container',
-    'fernverkehr','fernfahrer','nahverkehr','regional','national','international',
-    'werksverkehr','baustellenverkehr','distribution','spedition',
-    '40-tonner','7.5-tonner','12-tonner','schwerlast','überbreite','überlänge',
-    'nachtfahrten','wochenendarbeit','schichtarbeit','tourplanung'
+    'führerschein ce', 'führerschein c', 'führerschein c1', 'führerschein c1e', 'klasse ce', 'klasse c',
+    'berufskraftfahrerqualifikation', 'bkf', 'beschleunigte grundqualifikation', 'adr-schein', 'adr',
+    'gefahrgut', 'gabelstaplerschein', 'ladungssicherung', 'digitaler tachograph',
+    'sattelzug', 'sattelschlepper', 'solo', 'gliederzug', 'kipper', 'pritsche', 'plane',
+    'kühlfahrzeug', 'tiefkühler', 'tankwagen', 'silo', 'wechselbrücke', 'container',
+    'fernverkehr', 'fernfahrer', 'nahverkehr', 'regional', 'national', 'international',
+    'werksverkehr', 'baustellenverkehr', 'distribution', 'spedition',
+    '40-tonner', '7.5-tonner', '12-tonner', 'schwerlast', 'überbreite', 'überlänge',
+    'nachtfahrten', 'wochenendarbeit', 'schichtarbeit', 'tourplanung'
   ],
-  'truck driver': ['class 1','class a','cdl','long haul','regional','local','tanker','flatbed','otr','hazmat'],
-  'software engineer': ['javascript','python','java','react','node','backend','frontend','full stack','devops'],
-  'nurse': ['rn','lpn','icu','emergency','pediatric','surgical','critical care','oncology'],
-  'electrician': ['commercial','residential','industrial','apprentice','journeyman','master electrician'],
-  'mechanic': ['automotive','diesel','heavy equipment','marine','aircraft','ase certified'],
-  'welder': ['mig','tig','stick','flux core','pipe welding','structural','stainless steel'],
-  'warehouse': ['forklift','reach truck','picker','packer','shipping','receiving','inventory'],
+  'truck driver': ['class 1', 'class a', 'cdl', 'long haul', 'regional', 'local', 'tanker', 'flatbed', 'otr', 'hazmat'],
+  'software engineer': ['javascript', 'python', 'java', 'react', 'node', 'backend', 'frontend', 'full stack', 'devops'],
+  'nurse': ['rn', 'lpn', 'icu', 'emergency', 'pediatric', 'surgical', 'critical care', 'oncology'],
+  'electrician': ['commercial', 'residential', 'industrial', 'apprentice', 'journeyman', 'master electrician'],
+  'mechanic': ['automotive', 'diesel', 'heavy equipment', 'marine', 'aircraft', 'ase certified'],
+  'welder': ['mig', 'tig', 'stick', 'flux core', 'pipe welding', 'structural', 'stainless steel'],
+  'warehouse': ['forklift', 'reach truck', 'picker', 'packer', 'shipping', 'receiving', 'inventory'],
 };
 
 function extractTags({ title = '', company = '', html = '' }) {
@@ -323,8 +323,8 @@ function parseMeta(textHTML = '', title = '') {
     const c = cMatch[0].toUpperCase();
     currency = (c === '€' || c === 'EUR' || c === 'EURO') ? 'EUR'
       : (c === '$' || c === 'USD') ? 'USD'
-      : (c === '£' || c === 'GBP') ? 'GBP'
-      : (c === 'CHF') ? 'CHF' : null;
+        : (c === '£' || c === 'GBP') ? 'GBP'
+          : (c === 'CHF') ? 'CHF' : null;
   }
 
   const range = text.match(/(\d{1,2}[.,]?\d{3,6})\s*[-–—bis]\s*(\d{1,2}[.,]?\d{3,6})/i);
@@ -353,12 +353,12 @@ async function rewriteJobRich({ title, company, html }, useAI = false) {
   const fallback = () => {
     const paragraphs = plain.split(/\n+/).filter(Boolean);
     let structuredHTML = '';
-    
+
     // If we have substantial content, organize it
     if (paragraphs.length > 3 && plain.length > 200) {
       const intro = paragraphs.slice(0, 2).map(p => `<p>${escapeHtml(p)}</p>`).join('\n');
       const rest = paragraphs.slice(2).map(p => `<p>${escapeHtml(p)}</p>`).join('\n');
-      
+
       structuredHTML = `
 <section>
   <h2>Stellenbeschreibung</h2>
@@ -459,13 +459,13 @@ EXAMPLES OF GOOD CONTENT:
       short = truncateWords(plain, 60);
     }
     short = convert(short, { wordwrap: 120 }).trim();
-    
+
     // Enforce reasonable length but allow more detail
     if (short.length > 800) short = short.slice(0, 800) + '…';
 
     let htmlOut = (htmlMatch?.[1] || '').trim();
     htmlOut = stripDocumentTags(htmlOut);
-    
+
     // Validate we have substantial content
     if (htmlOut.length < 100) {
       console.log('AI output too short, using fallback for:', title);
@@ -476,7 +476,7 @@ EXAMPLES OF GOOD CONTENT:
     try {
       const m = (tagsMatch?.[1] || '').match(/\[[\s\S]*\]/);
       if (m) tagsParsed = JSON.parse(m[0]);
-    } catch {}
+    } catch { }
     const tags = uniqNormTags(tagsParsed || extractTags({ title, company, html }));
 
     return {
@@ -507,11 +507,18 @@ function upsertTagsForJob(jobId, tags = []) {
 // FEED-VERARBEITUNG
 // ========================================
 let FEED_RUNNING = false;
+let FEED_START_TIME = 0;
 
 export async function processFeed() {
   if (FEED_RUNNING) {
-    console.log('Feed-Verarbeitung läuft bereits, übersprungen…');
-    return;
+    // Safety check: If running for > 30 minutes, assume stuck and reset
+    if (Date.now() - FEED_START_TIME > 30 * 60 * 1000) {
+      console.warn('WARNUNG: Feed-Verarbeitung hängt seit > 30 Min. Setze Lock zurück.');
+      FEED_RUNNING = false;
+    } else {
+      console.log('Feed-Verarbeitung läuft bereits, übersprungen…');
+      return;
+    }
   }
   if (!FEED_URL) {
     console.log('Keine FEED_URL konfiguriert');
@@ -519,6 +526,11 @@ export async function processFeed() {
   }
 
   FEED_RUNNING = true;
+  FEED_START_TIME = Date.now();
+
+  // Timeout controller (60 seconds)
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
 
   try {
     console.log(`\nHole XML-Feed: ${FEED_URL}`);
@@ -527,7 +539,8 @@ export async function processFeed() {
     console.log(`KI-Verarbeitung: ${AI_PROCESS_LIMIT === 0 ? 'Unbegrenzt' : `Erste ${AI_PROCESS_LIMIT} Jobs`}`);
     console.log('Starte Streaming-XML-Parser…\n');
 
-    const response = await fetch(FEED_URL);
+    const response = await fetch(FEED_URL, { signal: controller.signal });
+
     const stream = response.body;
 
     let matched = 0;
@@ -554,8 +567,8 @@ export async function processFeed() {
     let currentText = '';
 
     // Create parser with LESS strict mode to handle malformed XML
-    const parser = sax.createStream(false, { 
-      trim: true, 
+    const parser = sax.createStream(false, {
+      trim: true,
       normalize: true,
       lowercase: true,
       xmlns: false,
@@ -578,12 +591,12 @@ export async function processFeed() {
       }
     });
 
-    parser.on('text', (text) => { 
-      if (text) currentText += text; 
+    parser.on('text', (text) => {
+      if (text) currentText += text;
     });
-    
-    parser.on('cdata', (text) => { 
-      if (text) currentText += text; 
+
+    parser.on('cdata', (text) => {
+      if (text) currentText += text;
     });
 
     parser.on('closetag', (tagName) => {
@@ -654,14 +667,14 @@ export async function processFeed() {
 
     await new Promise((resolve, reject) => {
       let streamError = null;
-      
+
       stream.on('error', (err) => {
         console.error('Stream Error:', err.message);
         streamError = err;
       });
 
       stream.pipe(parser);
-      
+
       parser.on('end', async () => {
         if (streamError) {
           reject(streamError);
@@ -737,9 +750,15 @@ export async function processFeed() {
       stmtSetCache.run('total_jobs', MAX_JOBS);
     }
   } catch (error) {
-    console.error('Feed-Fehler:', error.message);
-    throw error;
+    if (error.name === 'AbortError') {
+      console.error('Feed-Fehler: Zeitüberschreitung beim Laden (Timeout 60s)');
+    } else {
+      console.error('Feed-Fehler:', error.message);
+    }
+    // Don't rethrow if it's just a timeout/cron job, but here we might want to know
+    // For now, keep behavior similar but log specific error
   } finally {
+    clearTimeout(timeout);
     FEED_RUNNING = false;
   }
 }
@@ -991,7 +1010,7 @@ app.get('/healthz', (req, res) => {
 app.get('/', (req, res) => {
   const pageSize = 50;
   const cursor = req.query.cursor || '';
-  
+
   let rows;
   if (!cursor) {
     rows = stmtPageFirst.all(pageSize);
@@ -1236,7 +1255,7 @@ app.post('/post-job', async (req, res) => {
     const published_at = Math.floor(Date.now() / 1000);
 
     const userTags = tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
-    
+
     let finalHtml, finalShort, finalTags;
     if (!description.trim()) {
       console.log('Erzeuge KI-Inhalt für manuelle Anzeige:', title);
@@ -1473,7 +1492,7 @@ app.get('/job/:slug', (req, res) => {
   // Extract location from description if possible
   const extractLocation = (html = '', title = '') => {
     const text = (convert(html, { wordwrap: 1000 }) + ' ' + title).toLowerCase();
-    
+
     // Try to find German cities or regions
     const germanCities = [
       'berlin', 'hamburg', 'münchen', 'köln', 'frankfurt', 'stuttgart', 'düsseldorf',
@@ -1483,7 +1502,7 @@ app.get('/job/:slug', (req, res) => {
       'braunschweig', 'chemnitz', 'kiel', 'aachen', 'halle', 'magdeburg', 'freiburg',
       'krefeld', 'lübeck', 'oberhausen', 'erfurt', 'mainz', 'rostock', 'kassel'
     ];
-    
+
     for (const city of germanCities) {
       if (text.includes(city)) {
         return {
@@ -1492,7 +1511,7 @@ app.get('/job/:slug', (req, res) => {
         };
       }
     }
-    
+
     // Default to configured country
     return {
       country: TARGET_COUNTRY_NAME
@@ -1502,18 +1521,18 @@ app.get('/job/:slug', (req, res) => {
   // Extract experience requirements from description
   const extractExperience = (html = '', title = '') => {
     const text = (convert(html, { wordwrap: 1000 }) + ' ' + title).toLowerCase();
-    
+
     // Look for years of experience
     const yearsMatch = text.match(/(\d+)\s*(?:\+|\-|\s)*(?:jahre?|years?)\s+(?:erfahrung|experience|berufserfahrung)/i);
     if (yearsMatch) {
       return `${yearsMatch[1]} Jahre Berufserfahrung`;
     }
-    
+
     // Look for specific requirements
     if (/\b(führerschein ce|klasse ce|class 1|cdl)\b/i.test(text)) {
       return 'Führerschein Klasse CE erforderlich';
     }
-    
+
     return null;
   };
 
@@ -1549,7 +1568,7 @@ app.get('/job/:slug', (req, res) => {
     },
     "jobLocation": jobLocation,
     "directApply": true,
-    ...(meta.isRemote ? { 
+    ...(meta.isRemote ? {
       "jobLocationType": "TELECOMMUTE"
     } : {}),
     ...(experienceReq ? {
@@ -1641,7 +1660,7 @@ app.get('/sitemap.xml', (req, res) => {
       <changefreq>weekly</changefreq>
       <priority>0.8</priority>
     </url>`).join('');
-  
+
   res.set('Content-Type', 'application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -1668,7 +1687,7 @@ app.get('/feed.xml', (req, res) => {
       <guid>${canonical(`/job/${r.slug}`)}</guid>
       <pubDate>${new Date(r.published_at * 1000).toUTCString()}</pubDate>
     </item>`).join('');
-  
+
   res.set('Content-Type', 'application/rss+xml').send(`<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
@@ -1685,7 +1704,7 @@ app.get('/feed.xml', (req, res) => {
 // ========================================
 // RECHTSTEXTE (DE)
 // ========================================
-const LAST_UPDATED = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+const LAST_UPDATED = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
 app.get('/privacy', (req, res) => {
   const breadcrumbs = [
