@@ -528,9 +528,9 @@ export async function processFeed() {
   FEED_RUNNING = true;
   FEED_START_TIME = Date.now();
 
-  // Timeout controller (60 seconds)
+  // Timeout controller (15 minutes)
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const timeout = setTimeout(() => controller.abort(), 15 * 60 * 1000);
 
   try {
     console.log(`\nHole XML-Feed: ${FEED_URL}`);
@@ -751,7 +751,7 @@ export async function processFeed() {
     }
   } catch (error) {
     if (error.name === 'AbortError') {
-      console.error('Feed-Fehler: Zeitüberschreitung beim Laden (Timeout 60s)');
+      console.error('Feed-Fehler: Zeitüberschreitung beim Laden (Timeout 15 Min)');
     } else {
       console.error('Feed-Fehler:', error.message);
     }
