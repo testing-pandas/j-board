@@ -1840,8 +1840,3 @@ app.listen(PORT, () => {
   console.log(`Jobs gesamt:  ${getCachedCount().toLocaleString('de-DE')}`);
   console.log('='.repeat(60) + '\n');
 });
-
-
-
-
-
