@@ -979,7 +979,7 @@ function layout({ title, body, metaExtra = '', breadcrumbs = null }) {
   </main>
   <footer class="wrap">
     <p class="muted small">© ${new Date().getFullYear()} ${escapeHtml(SITE_NAME)} · ${escapeHtml(TARGET_PROFESSION)}-Stellen · 
-      <a href="/privacy">Datenschutz</a> · <a href="/terms">Nutzungsbedingungen</a> · <a href="/cookies">Cookies</a>
+      <a href="/privacy">Datenschutz</a> · <a href="/terms">Nutzungsbedingungen</a> · <a href="/cookies">Cookies</a> · <a href="https://jobsdeliverydriver.org/">Driver Jobs in US</a>
     </p>
   </footer>
   ${cookieBanner}
